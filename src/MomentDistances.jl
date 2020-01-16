@@ -118,7 +118,7 @@ function summary(options, ::MIME"text/plain", metric, x, y)
     # this is the fallback, and also the indended summary for scalar metrics like
     # AbsoluteRelative
     x_, y_, d_ = _dotted_repr.(Ref(options), (x, y, distance(metric, x, y)))
-    "‹" * x_ * " → " * y_ * ": " * d_ * "›"
+    "‹" * x_ * " ↔ " * y_ * ": " * d_ * "›"
 end
 
 function summary(options, mime::MIME"text/plain", metric::ElementwiseMean, x, y)
