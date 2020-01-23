@@ -114,7 +114,7 @@ end
 function summary(options, mime::MIME"text/plain", metric::ElementwiseMean, x, y)
     @argcheck axes(x) == axes(y)
     header = "elementwise mean distance: " * _dotted_repr(options, distance(metric, x, y))
-    digits_by_axis = map(1:ndims(x)) do i
+    digits_by_axis = ntuple(ndims(x)) do i
         max(length(string(firstindex(x, i))), length(string(lastindex(x, i))))
     end
     body = mapreduce(*, CartesianIndices(x), x, y) do i, x, y
