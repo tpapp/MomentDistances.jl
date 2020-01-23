@@ -87,7 +87,7 @@ end
 
 "Options for printing text summaries."
 Base.@kwdef struct TextSummaryOptions
-    sigdigits::Int = 2
+    sigdigits::Int = 3
 end
 
 function _dotted_repr(options, x)
