@@ -104,16 +104,6 @@ function _indent(str, n = 2)
     join(map(line -> ' '^n * line, split(str, '\n')), '\n')
 end
 
-"""
-A hack to avoid printing quotes for strings while utilizing Julia's array printing
-machinery.
-"""
-struct _NoQuotes{T}
-    str::T
-end
-
-Base.show(io::IO, nq::_NoQuotes) = print(io, nq.str)
-
 function summary(options, ::MIME"text/plain", metric, x, y)
     # this is the fallback, and also the indended summary for scalar metrics like
     # AbsoluteRelative
@@ -122,10 +112,18 @@ function summary(options, ::MIME"text/plain", metric, x, y)
 end
 
 function summary(options, mime::MIME"text/plain", metric::ElementwiseMean, x, y)
-    "elementwise mean distance: " * _dotted_repr(options, distance(metric, x, y)) * "\n" *
-        _indent(sprint(Base.print_array,
-                       map((x, y) -> _NoQuotes(summary(options, mime, metric.metric, x, y)),
-                           x, y)))
+    @argcheck axes(x) == axes(y)
+    header = "elementwise mean distance: " * _dotted_repr(options, distance(metric, x, y))
+    digits_by_axis = ntuple(ndims(x)) do i
+        max(length(string(firstindex(x, i))), length(string(lastindex(x, i))))
+    end
+    body = mapreduce(*, CartesianIndices(x), x, y) do i, x, y
+        padded_index = mapreduce((d, i) -> lpad(string(i), d, ' '), (a, b) -> a * "," * b,
+                                 digits_by_axis, Tuple(i))
+        "\n" * _indent("[" * padded_index * "]  " *
+                       summary(options, mime, metric.metric, x, y))
+    end
+    header * body
 end
 
 function summary(options, mime::MIME"text/plain", metric::Weighted, x, y)

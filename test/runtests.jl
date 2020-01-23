@@ -48,14 +48,18 @@ end
     @test MomentDistances.summary(mA, A1, A2) ==
         """
         elementwise mean distance: 1.0
-           ‹1.0 ↔ 0.0: 1.0›  ‹1.0 ↔ 2.0: 1.0›
-           ‹1.0 ↔ 1.0: 0.0›  ‹1.0 ↔ 3.0: 2.0›"""
+          [1,1]  ‹1.0 ↔ 0.0: 1.0›
+          [2,1]  ‹1.0 ↔ 1.0: 0.0›
+          [1,2]  ‹1.0 ↔ 2.0: 1.0›
+          [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
     @test MomentDistances.summary(Weighted(mA, 0.7), A1, A2) ==
         """
         weighted: 0.7
           elementwise mean distance: 1.0
-             ‹1.0 ↔ 0.0: 1.0›  ‹1.0 ↔ 2.0: 1.0›
-             ‹1.0 ↔ 1.0: 0.0›  ‹1.0 ↔ 3.0: 2.0›"""
+            [1,1]  ‹1.0 ↔ 0.0: 1.0›
+            [2,1]  ‹1.0 ↔ 1.0: 0.0›
+            [1,2]  ‹1.0 ↔ 2.0: 1.0›
+            [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
     @test MomentDistances.summary(NamedSum((s = ms, A = Weighted(mA, 0.7))),
                                   (s = s1, A = A1), (s = s2, A = A2)) ==
         """
@@ -65,8 +69,10 @@ end
           from A:
             weighted: 0.7
               elementwise mean distance: 1.0
-                 ‹1.0 ↔ 0.0: 1.0›  ‹1.0 ↔ 2.0: 1.0›
-                 ‹1.0 ↔ 1.0: 0.0›  ‹1.0 ↔ 3.0: 2.0›"""
+                [1,1]  ‹1.0 ↔ 0.0: 1.0›
+                [2,1]  ‹1.0 ↔ 1.0: 0.0›
+                [1,2]  ‹1.0 ↔ 2.0: 1.0›
+                [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
 
     @test sprint(summarize, ms, s1, s2) == MomentDistances.summary(ms, s1, s2)
 end
