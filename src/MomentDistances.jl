@@ -117,7 +117,7 @@ function summary(options, mime::MIME"text/plain", metric::ElementwiseMean, x, y)
     digits_by_axis = ntuple(ndims(x)) do i
         max(length(string(firstindex(x, i))), length(string(lastindex(x, i))))
     end
-    body = mapreduce(*, CartesianIndices(x), x, y) do i, x, y
+    body = mapreduce(*, vec(CartesianIndices(x)), vec(x), vec(y)) do i, x, y
         padded_index = mapreduce((d, i) -> lpad(string(i), d, ' '), (a, b) -> a * "," * b,
                                  digits_by_axis, Tuple(i))
         "\n" * _indent("[" * padded_index * "]  " *
