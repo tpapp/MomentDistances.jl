@@ -14,22 +14,32 @@ using Test
                      abs(s1 - s2) / max(abs(s1), abs(s2))),
                     (AbsoluteRelative(; relative_adjustment = 0.3),
                      abs(s1 - s2) / max(1, 0.3 * max(abs(s1), abs(s2)))))
-        @test iszero(distance(ms, s1, s1))
-        ds = distance(ms, s1, s2)
+        @test iszero(@inferred(distance(ms, s1, s1)))
+        ds = @inferred(distance(ms, s1, s2))
         @test ds ≈ d
 
         mA = ElementwiseMean(ms)
-        @test iszero(distance(mA, A1, A1))
-        dA = distance(mA, A1, A2)
+        @test iszero(@inferred(distance(mA, A1, A1)))
+        dA = @inferred distance(mA, A1, A2)
         @test dA ≈ mean(distance.(Ref(ms), A1, A2))
         @test_throws DimensionMismatch distance(mA, A1, ones(3, 7))
 
         w = rand()
         mN = NamedSum((s = ms, A = Weighted(mA, w)))
         nt = (s = s1, A = A1)
-        @test iszero(distance(mN, nt, nt))
-        @test distance(mN, nt, (s = s2, A = A2)) ≈ distance(ms, s1, s2) + distance(mA, A1, A2) * w
+        @test iszero(@inferred(distance(mN, nt, nt)))
+        @test @inferred(distance(mN, nt, (s = s2, A = A2))) ≈
+            distance(ms, s1, s2) + distance(mA, A1, A2) * w
     end
+end
+
+@testset "inference checks" begin
+    metric = NamedSum((a = AbsoluteRelative(), b = Weighted(AbsoluteRelative(), 2.0)))
+    nt = (a = 1, b = 2)
+    @test @inferred(distance(AbsoluteRelative(), 1.0, 1.0)) == 0
+    @test @inferred(distance(Weighted(AbsoluteRelative(), 1.0), 1.0, 1.0)) == 0
+    @test @inferred(distance(metric, nt, nt)) == 0
+    @test @inferred(distance(ElementwiseMean(AbsoluteRelative()), ones(3), ones(3))) == 0
 end
 
 @testset "constructor checks" begin

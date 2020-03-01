@@ -3,6 +3,7 @@ module MomentDistances
 export distance, NamedSum, Weighted, ElementwiseMean, AbsoluteRelative, summarize
 
 using ArgCheck: @argcheck
+using DocStringExtensions: FUNCTIONNAME, SIGNATURES, TYPEDEF
 using LinearAlgebra: LinearAlgebra
 using Base.Multimedia: MIME, @MIME_str
 using Statistics: mean
@@ -12,17 +13,32 @@ using UnPack: @unpack
 #### core functionality
 ####
 
+"""
+`$(FUNCTIONNAME)(metric, x, y)`
+
+Calculate the distance (a real number) between `x` and `y` using `metric`.
+"""
 function distance end
 
 struct NamedSum{T <: NamedTuple}
     named_metrics::T
 end
 
-function distance(metric::NamedSum, x, y)
-    # FIXME this is probably suboptimal because of getproperty, not a concern in practice
-    mapreduce(((key, metric),) -> distance(metric, getproperty(x, key), getproperty(y, key)),
-              +, pairs(metric.named_metrics))
+"""
+$(SIGNATURES)
+
+Recursive helper function for named sums.
+"""
+_named_distance_sum(::NamedTuple{(),Tuple{}}, x, y) = 0
+
+function _named_distance_sum(metrics::NamedTuple{K}, x, y) where K
+    K1 = first(K)
+    V = values(metrics)
+    d1 = distance(first(V), getproperty(x, K1), getproperty(y, K1))
+    d1 + _named_distance_sum(NamedTuple{Base.tail(K)}(Base.tail(V)), x, y)
 end
+
+distance(metric::NamedSum, x, y) = _named_distance_sum(metric.named_metrics, x, y)
 
 struct Weighted{M,T <: Real}
     metric::M
@@ -38,12 +54,13 @@ function distance(metric::Weighted, x, y)
 end
 
 struct ElementwiseMean{M}
-    metric::M
+    elementwise_metric::M
 end
 
 function distance(metric::ElementwiseMean, x, y)
-    @unpack metric = metric
-    mean(map((x, y) -> distance(metric, x, y), x, y))
+    @argcheck axes(x) == axes(y) DimensionMismatch
+    @unpack elementwise_metric = metric
+    mean(((x, y),) -> distance(elementwise_metric, x, y), zip(x, y))
 end
 
 Base.@kwdef struct AbsoluteRelative{T <: Union{Nothing,Real},F}
@@ -121,7 +138,7 @@ function summary(options, mime::MIME"text/plain", metric::ElementwiseMean, x, y)
         padded_index = mapreduce((d, i) -> lpad(string(i), d, ' '), (a, b) -> a * "," * b,
                                  digits_by_axis, Tuple(i))
         "\n" * _indent("[" * padded_index * "]  " *
-                       summary(options, mime, metric.metric, x, y))
+                       summary(options, mime, metric.elementwise_metric, x, y))
     end
     header * body
 end
