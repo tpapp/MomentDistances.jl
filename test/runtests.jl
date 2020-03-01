@@ -34,12 +34,13 @@ using Test
 end
 
 @testset "inference checks" begin
-    metric = NamedSum((a = AbsoluteRelative(), b = Weighted(AbsoluteRelative(), 2.0)))
-    nt = (a = 1, b = 2)
     @test @inferred(distance(AbsoluteRelative(), 1.0, 1.0)) == 0
     @test @inferred(distance(Weighted(AbsoluteRelative(), 1.0), 1.0, 1.0)) == 0
-    @test @inferred(distance(metric, nt, nt)) == 0
     @test @inferred(distance(ElementwiseMean(AbsoluteRelative()), ones(3), ones(3))) == 0
+    metric = NamedSum((a = AbsoluteRelative(), b = Weighted(AbsoluteRelative(), 2.0),
+                       c = AbsoluteRelative(), d = AbsoluteRelative()))
+    nt = (a = 1, b = 2, c = 3.0, d = 4.0)
+    @test @inferred(distance(metric, nt, nt)) == 0
 end
 
 @testset "constructor checks" begin

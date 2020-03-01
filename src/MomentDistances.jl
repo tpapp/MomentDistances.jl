@@ -27,15 +27,16 @@ end
 """
 $(SIGNATURES)
 
-Recursive helper function for named sums.
+Helper function for named sums.
 """
-_named_distance_sum(::NamedTuple{(),Tuple{}}, x, y) = 0
-
-function _named_distance_sum(metrics::NamedTuple{K}, x, y) where K
-    K1 = first(K)
-    V = values(metrics)
-    d1 = distance(first(V), getproperty(x, K1), getproperty(y, K1))
-    d1 + _named_distance_sum(NamedTuple{Base.tail(K)}(Base.tail(V)), x, y)
+function _named_distance_sum(named_metrics::NamedTuple{K}, x, y) where K
+    if @generated
+        mapreduce(k -> :(distance(named_metrics.$(k), x.$(k), y.$(k))),
+                  (a, b) -> :($(a) + $(b)), K)
+    else
+        mapreduce((k, v) -> distance(v, getproperty(x, k), getproperty(y, k)),
+                  +, pairs(named_metrics))
+    end
 end
 
 distance(metric::NamedSum, x, y) = _named_distance_sum(metric.named_metrics, x, y)
