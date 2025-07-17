@@ -2,6 +2,16 @@ using MomentDistances
 using Statistics: mean
 using Test
 
+@testset "primitives" begin
+    @test distance(AbsDiff(), 0.2, 0.3) ≈ 0.1
+    @test distance(AbsDiff(), 0.2, 0.2) == 0
+    @test_throws DomainError distance(AbsDiff(), 0, NaN)
+
+    @test distance(RelDiff(), 0.2, 0.3) ≈ 0.5
+    @test_throws DomainError distance(RelDiff(), 0, 0.3)
+    @test_throws DomainError distance(RelDiff(), -Inf, 0.3)
+end
+
 @testset "distance checks" begin
     s1 = rand() * 2
     s2 = rand() * 2

@@ -2,6 +2,9 @@ module MomentDistances
 
 export distance, NamedSum, Weighted, ElementwiseMean, AbsoluteRelative, summarize
 
+# metrics
+export AbsDiff, RelDiff
+
 using ArgCheck: @argcheck
 using DocStringExtensions: FUNCTIONNAME, SIGNATURES, TYPEDEF
 using LinearAlgebra: LinearAlgebra
@@ -9,19 +12,95 @@ using Base.Multimedia: MIME, @MIME_str
 using Statistics: mean
 
 ####
-#### core functionality
+#### generic API
 ####
 
 """
-`$(FUNCTIONNAME)(metric, x, y)`
+`$(FUNCTIONNAME)(metric, data, model)`
 
-Calculate the distance (a real number) between `x` and `y` using `metric`.
+Calculate the distance (a real number) between `data` and `model` using `metric`.
+
+Importantly, `distance` is **not a metric in the mathematical sense**. Most importantly,
+it can be asymmetric.
+
+Distances are always finite. In practice, this means that they throw a `DomainError` for
+non-finite arguments.
+
+However, it is guaranteed that `distance(metric, x, x)` is zero for all possible
+`metric` and `x` values.
 """
 function distance end
 
+####
+#### scalar metrics
+####
+
+struct AbsDiff
+    @doc """
+    $(SIGNATURES)
+
+    *Absolute* difference between the arguments.
+
+    ```jldoctest
+    julia> distance(AbsDiff(), 0.3, 0.6)
+    0.3
+    ```
+    """
+    AbsDiff() = new()
+end
+
+function distance(metric::AbsDiff, data::Real, model::Real)
+    @argcheck isfinite(data) DomainError
+    @argcheck isfinite(model) DomainError
+    abs(data - model)
+end
+
+struct RelDiff
+    @doc """
+    $(SIGNATURES)
+
+    *Relative* difference between `data` and `model`, calculated as `abs(data - model) / abs(data)`.
+
+    If `data == 0`, an error is thrown.
+
+    ```jldoctest
+    julia> distance(RelDiff(), 0.2, 0.23)
+    0.15
+    ```
+    """
+    RelDiff() = new()
+end
+
+function distance(metric::RelDiff, data::Real, model::Real)
+    @argcheck isfinite(data) DomainError
+    @argcheck isfinite(model) DomainError
+    @argcheck data ≠ 0 DomainError
+    abs(data - model) / abs(data)
+end
+
 """
-$(TYPEDEF)
+$(SIGNATURES)
 """
+Base.@kwdef struct AbsoluteRelative{T <: Union{Nothing,Real},F}
+    relative_adjustment::T = nothing
+    norm::F = LinearAlgebra.norm
+end
+
+function distance(metric::AbsoluteRelative, x, y)
+    (; relative_adjustment, norm) = metric
+    Δ = norm(x - y)
+    if relative_adjustment ≡ nothing
+        Δ
+    else
+        A = max(norm(x), norm(y))
+        Δ / (relative_adjustment == Inf ? A : max(1, relative_adjustment * A))
+    end
+end
+
+####
+#### aggregates
+####
+
 struct NamedSum{T <: NamedTuple}
     named_metrics::T
 end
@@ -72,24 +151,6 @@ function distance(metric::ElementwiseMean, x, y)
     mean(((x, y),) -> distance(elementwise_metric, x, y), zip(x, y))
 end
 
-"""
-$(TYPEDEF)
-"""
-Base.@kwdef struct AbsoluteRelative{T <: Union{Nothing,Real},F}
-    relative_adjustment::T = nothing
-    norm::F = LinearAlgebra.norm
-end
-
-function distance(metric::AbsoluteRelative, x, y)
-    (; relative_adjustment, norm) = metric
-    Δ = norm(x - y)
-    if relative_adjustment ≡ nothing
-        Δ
-    else
-        A = max(norm(x), norm(y))
-        Δ / (relative_adjustment == Inf ? A : max(1, relative_adjustment * A))
-    end
-end
 
 ####
 #### summaries
