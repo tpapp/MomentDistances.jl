@@ -19,6 +19,9 @@ Calculate the distance (a real number) between `x` and `y` using `metric`.
 """
 function distance end
 
+"""
+$(TYPEDEF)
+"""
 struct NamedSum{T <: NamedTuple}
     named_metrics::T
 end
@@ -43,6 +46,9 @@ distance(metric::NamedSum, x, y) = _named_distance_sum(metric.named_metrics, x, 
 struct Weighted{M,T <: Real}
     metric::M
     weight::T
+    @doc """
+    $(SIGNATURES)
+    """
     function Weighted(metric::M, weight::T) where {M, T <: Real}
         @argcheck weight > 0
         new{M,T}(metric, weight)
@@ -53,6 +59,9 @@ function distance(metric::Weighted, x, y)
     metric.weight * distance(metric.metric, x, y)
 end
 
+"""
+$(TYPEDEF)
+"""
 struct ElementwiseMean{M}
     elementwise_metric::M
 end
@@ -63,6 +72,9 @@ function distance(metric::ElementwiseMean, x, y)
     mean(((x, y),) -> distance(elementwise_metric, x, y), zip(x, y))
 end
 
+"""
+$(TYPEDEF)
+"""
 Base.@kwdef struct AbsoluteRelative{T <: Union{Nothing,Real},F}
     relative_adjustment::T = nothing
     norm::F = LinearAlgebra.norm
@@ -158,6 +170,9 @@ function summary(options, mime::MIME"text/plain", metric::NamedSum, x, y)
     str
 end
 
+"""
+$(SIGNATURES)
+"""
 function summarize(io, mime::MIME"text/plain", metric, x, y)
     print(io, summary(mime, metric, x, y))
 end
