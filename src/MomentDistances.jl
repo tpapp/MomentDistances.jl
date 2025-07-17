@@ -7,7 +7,6 @@ using DocStringExtensions: FUNCTIONNAME, SIGNATURES, TYPEDEF
 using LinearAlgebra: LinearAlgebra
 using Base.Multimedia: MIME, @MIME_str
 using Statistics: mean
-using UnPack: @unpack
 
 ####
 #### core functionality
@@ -60,7 +59,7 @@ end
 
 function distance(metric::ElementwiseMean, x, y)
     @argcheck axes(x) == axes(y) DimensionMismatch
-    @unpack elementwise_metric = metric
+    (; elementwise_metric) = metric
     mean(((x, y),) -> distance(elementwise_metric, x, y), zip(x, y))
 end
 
@@ -70,7 +69,7 @@ Base.@kwdef struct AbsoluteRelative{T <: Union{Nothing,Real},F}
 end
 
 function distance(metric::AbsoluteRelative, x, y)
-    @unpack relative_adjustment, norm = metric
+    (; relative_adjustment, norm) = metric
     Δ = norm(x - y)
     if relative_adjustment ≡ nothing
         Δ
