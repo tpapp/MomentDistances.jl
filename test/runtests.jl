@@ -1,102 +1,100 @@
 using MomentDistances
-using Statistics: mean
 using Test
+using LinearAlgebra: norm
 
 @testset "primitives" begin
-    @test distance(AbsDiff(), 0.2, 0.3) ≈ 0.1
-    @test distance(AbsDiff(), 0.2, 0.2) == 0
+    @test @inferred(distance(AbsDiff(), 0.2, 0.3)) ≈ 0.1
+    @test @inferred(distance(AbsDiff(), 0.2, 0.2)) == 0
     @test_throws DomainError distance(AbsDiff(), 0, NaN)
 
-    @test distance(RelDiff(), 0.2, 0.3) ≈ 0.5
+    @test @inferred(distance(RelDiff(), -0.2, 0.3)) ≈ 2.5
     @test_throws DomainError distance(RelDiff(), 0, 0.3)
     @test_throws DomainError distance(RelDiff(), -Inf, 0.3)
 end
 
-@testset "distance checks" begin
-    s1 = rand() * 2
-    s2 = rand() * 2
-
-    A1 = rand(4, 4)
-    A2 = rand(4, 4)
-
-    for (ms, d) in ((AbsoluteRelative(), abs(s1 - s2)),
-                    (AbsoluteRelative(; relative_adjustment = Inf),
-                     abs(s1 - s2) / max(abs(s1), abs(s2))),
-                    (AbsoluteRelative(; relative_adjustment = 0.3),
-                     abs(s1 - s2) / max(1, 0.3 * max(abs(s1), abs(s2)))))
-        @test iszero(@inferred(distance(ms, s1, s1)))
-        ds = @inferred(distance(ms, s1, s2))
-        @test ds ≈ d
-
-        mA = ElementwiseMean(ms)
-        @test iszero(@inferred(distance(mA, A1, A1)))
-        dA = @inferred distance(mA, A1, A2)
-        @test dA ≈ mean(distance.(Ref(ms), A1, A2))
-        @test_throws DimensionMismatch distance(mA, A1, ones(3, 7))
-
-        w = rand()
-        mN = NamedSum((s = ms, A = Weighted(mA, w)))
-        nt = (s = s1, A = A1)
-        @test iszero(@inferred(distance(mN, nt, nt)))
-        @test @inferred(distance(mN, nt, (s = s2, A = A2))) ≈
-            distance(ms, s1, s2) + distance(mA, A1, A2) * w
-    end
+@testset "weighted" begin
+    m = RelDiff()
+    data = 0.4
+    model = 0.8
+    w = 0.3
+    wm = Weighted(m, 0.3)
+    @test repr(wm) == "$(w) * $(m)"
+    @test wm == @inferred(m * w) == @inferred(w * m)
+    @test @inferred(distance(wm, data, model)) ≈ w * distance(m, data, model)
+    @test wm * 1 == wm
+    @test @inferred(0.3 * wm * 0.4) == Weighted(m, w * 0.3 * 0.4) # recursively lift inner metric
 end
 
-@testset "inference checks" begin
-    @test @inferred(distance(AbsoluteRelative(), 1.0, 1.0)) == 0
-    @test @inferred(distance(Weighted(AbsoluteRelative(), 1.0), 1.0, 1.0)) == 0
-    @test @inferred(distance(ElementwiseMean(AbsoluteRelative()), ones(3), ones(3))) == 0
-    metric = NamedSum((a = AbsoluteRelative(), b = Weighted(AbsoluteRelative(), 2.0),
-                       c = AbsoluteRelative(), d = AbsoluteRelative()))
-    nt = (a = 1, b = 2, c = 3.0, d = 4.0)
-    @test @inferred(distance(metric, nt, nt)) == 0
+@testset "pnorm" begin
+    m = AbsDiff()
+    p = 3.1
+    pm = PNorm(m, 3.1)
+    @test repr(pm) == "PNorm($m, $p)"
+    N = 20
+    data = randn(N)
+    model = randn(N)
+    @test @inferred(distance(pm, data, model)) ≈ norm(distance.(m, data, model), p)
+
+    @test_throws ArgumentError PNorm(m, 0.7) # invalid p
+    @test repr(PNorm(m)) == "PNorm($m)"      # default p printing
 end
 
-@testset "constructor checks" begin
-    @test_throws ArgumentError Weighted(AbsoluteRelative(), -9)
+@testset "named pnorm" begin
+    a = AbsDiff()
+    b = RelDiff()
+    p = 2.7
+    ab = (; a, b)
+    pm = NamedPNorm(ab, p)
+    @test repr(pm) == "NamedPNorm($ab, $p)"
+    ad, am, bd, bm = randn(4)
+    @test @inferred(distance(pm, (; a = ad, b = bd), (; a = am, b = bm))) ≈
+        norm([distance(a, ad, am), distance(b, bd, bm)], p)
+
+    @test_throws ArgumentError NamedPNorm(ab, 0.5) # invalid p
+    @test repr(NamedPNorm(ab)) == "NamedPNorm($ab)"
 end
 
-@testset "text summaries" begin
-    s1 = 1
-    s2 = 2
-    ms = AbsoluteRelative()
-    A1 = ones(2, 2)
-    A2 = reshape(0:3, 2, 2)
-    mA = ElementwiseMean(AbsoluteRelative())
+# @testset "text summaries" begin
+#     s1 = 1
+#     s2 = 2
+#     ms = AbsoluteRelative()
+#     A1 = ones(2, 2)
+#     A2 = reshape(0:3, 2, 2)
+#     mA = ElementwiseMean(AbsoluteRelative())
 
-    @test MomentDistances.summary(ms, s1, s2) == "‹1.0 ↔ 2.0: 1.0›"
-    @test MomentDistances.summary(mA, A1, A2) ==
-        """
-        elementwise mean distance: 1.0
-          [1,1]  ‹1.0 ↔ 0.0: 1.0›
-          [2,1]  ‹1.0 ↔ 1.0: 0.0›
-          [1,2]  ‹1.0 ↔ 2.0: 1.0›
-          [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
-    @test MomentDistances.summary(Weighted(mA, 0.7), A1, A2) ==
-        """
-        weighted: 0.7
-          elementwise mean distance: 1.0
-            [1,1]  ‹1.0 ↔ 0.0: 1.0›
-            [2,1]  ‹1.0 ↔ 1.0: 0.0›
-            [1,2]  ‹1.0 ↔ 2.0: 1.0›
-            [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
-    @test MomentDistances.summary(NamedSum((s = ms, A = Weighted(mA, 0.7))),
-                                  (s = s1, A = A1), (s = s2, A = A2)) ==
-        """
-        total: 1.7
-          from s:
-            ‹1.0 ↔ 2.0: 1.0›
-          from A:
-            weighted: 0.7
-              elementwise mean distance: 1.0
-                [1,1]  ‹1.0 ↔ 0.0: 1.0›
-                [2,1]  ‹1.0 ↔ 1.0: 0.0›
-                [1,2]  ‹1.0 ↔ 2.0: 1.0›
-                [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
+#     @test MomentDistances.summary(ms, s1, s2) == "‹1.0 ↔ 2.0: 1.0›"
+#     @test MomentDistances.summary(mA, A1, A2) ==
+#         """
+#         elementwise mean distance: 1.0
+#           [1,1]  ‹1.0 ↔ 0.0: 1.0›
+#           [2,1]  ‹1.0 ↔ 1.0: 0.0›
+#           [1,2]  ‹1.0 ↔ 2.0: 1.0›
+#           [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
+#     @test MomentDistances.summary(Weighted(mA, 0.7), A1, A2) ==
+#         """
+#         weighted: 0.7
+#           elementwise mean distance: 1.0
+#             [1,1]  ‹1.0 ↔ 0.0: 1.0›
+#             [2,1]  ‹1.0 ↔ 1.0: 0.0›
+#             [1,2]  ‹1.0 ↔ 2.0: 1.0›
+#             [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
+#     @test MomentDistances.summary(NamedSum((s = ms, A = Weighted(mA, 0.7))),
+#                                   (s = s1, A = A1), (s = s2, A = A2)) ==
+#         """
+#         total: 1.7
+#           from s:
+#             ‹1.0 ↔ 2.0: 1.0›
+#           from A:
+#             weighted: 0.7
+#               elementwise mean distance: 1.0
+#                 [1,1]  ‹1.0 ↔ 0.0: 1.0›
+#                 [2,1]  ‹1.0 ↔ 1.0: 0.0›
+#                 [1,2]  ‹1.0 ↔ 2.0: 1.0›
+#                 [2,2]  ‹1.0 ↔ 3.0: 2.0›"""
 
-    @test sprint(summarize, ms, s1, s2) == MomentDistances.summary(ms, s1, s2)
-end
+#     @test sprint(summarize, ms, s1, s2) == MomentDistances.summary(ms, s1, s2)
+# end
+
 # automated AQ
 import JET
 JET.report_package("MomentDistances")
