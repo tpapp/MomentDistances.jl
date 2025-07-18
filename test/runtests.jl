@@ -97,3 +97,8 @@ end
 
     @test sprint(summarize, ms, s1, s2) == MomentDistances.summary(ms, s1, s2)
 end
+# automated AQ
+import JET
+JET.report_package("MomentDistances")
+import Aqua
+Aqua.test_all(MomentDistances)

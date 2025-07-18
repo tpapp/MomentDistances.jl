@@ -7,9 +7,7 @@ export AbsDiff, RelDiff
 
 using ArgCheck: @argcheck
 using DocStringExtensions: FUNCTIONNAME, SIGNATURES, TYPEDEF
-using LinearAlgebra: LinearAlgebra
 using Base.Multimedia: MIME, @MIME_str
-using Statistics: mean
 
 ####
 #### generic API
