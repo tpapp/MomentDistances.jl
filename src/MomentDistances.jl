@@ -147,7 +147,7 @@ end
 "The default `p` for p-norms is `2` (Euclidean norm)."
 const DEFAULT_P = 2
 
-struct NamedPNorm{M <: NamedTuple,T<:Real}
+struct NamedPNorm{M <: NamedTuple,T<:Real} <: AbstractMetric
     named_metrics::M
     p::T
     @doc """
@@ -226,7 +226,7 @@ function distance(metric::NamedPNorm, x, y)
     _named_distance_psum(getfield(metric, :named_metrics), p, x, y)^(1/p)
 end
 
-struct PNorm{M,T}
+struct PNorm{M,T} <: AbstractMetric
     elementwise_metric::M
     p::T
     @doc """

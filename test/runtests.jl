@@ -35,9 +35,14 @@ end
     model = randn(N)
     @test @inferred(distance(pm, data, model)) ≈ norm(distance.(m, data, model), p)
 
-    @test_throws ArgumentError PNorm(m, 0.7) # invalid p
-    @test repr(PNorm(m)) == "PNorm($m)"      # default p printing
+    # invalid p
+    @test_throws ArgumentError PNorm(m, 0.7)
+    # default p printing
+    @test repr(PNorm(m)) == "PNorm($m)"
     @test_throws DimensionMismatch distance(pm, data, randn(2 * N))
+    # using * for weights
+    w = 0.3
+    @test w * pm == Weighted(pm, w) == pm * w
 end
 
 @testset "named pnorm" begin
@@ -53,9 +58,15 @@ end
     @test @inferred(distance(pm, data, (; a = am, b = bm))) ≈
         norm([distance(a, ad, am), distance(b, bd, bm)], p)
 
-    @test_throws ArgumentError NamedPNorm(ab, 0.5) # invalid p
+    # invalid p
+    @test_throws ArgumentError NamedPNorm(ab, 0.5)
+    # printing with default p
     @test repr(NamedPNorm(ab)) == "NamedPNorm($ab)"
+    # ignoring extra fields
     @test @inferred(distance(pm, (; c = "ignored", data...), (; d = "ignored", data...))) == 0
+    # using * for weights
+    w = 0.3
+    @test w * pm == Weighted(pm, w) == pm * w
 end
 
 # @testset "text summaries" begin
