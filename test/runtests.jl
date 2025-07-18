@@ -37,6 +37,7 @@ end
 
     @test_throws ArgumentError PNorm(m, 0.7) # invalid p
     @test repr(PNorm(m)) == "PNorm($m)"      # default p printing
+    @test_throws DimensionMismatch distance(pm, data, randn(2 * N))
 end
 
 @testset "named pnorm" begin
@@ -46,12 +47,15 @@ end
     ab = (; a, b)
     pm = NamedPNorm(ab, p)
     @test repr(pm) == "NamedPNorm($ab, $p)"
+    @test NamedPNorm(p; ab...) == pm
     ad, am, bd, bm = randn(4)
-    @test @inferred(distance(pm, (; a = ad, b = bd), (; a = am, b = bm))) ≈
+    data = (; a = ad, b = bd)
+    @test @inferred(distance(pm, data, (; a = am, b = bm))) ≈
         norm([distance(a, ad, am), distance(b, bd, bm)], p)
 
     @test_throws ArgumentError NamedPNorm(ab, 0.5) # invalid p
     @test repr(NamedPNorm(ab)) == "NamedPNorm($ab)"
+    @test @inferred(distance(pm, (; c = "ignored", data...), (; d = "ignored", data...))) == 0
 end
 
 # @testset "text summaries" begin

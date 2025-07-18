@@ -2,7 +2,7 @@ module MomentDistances
 
 export
     # generic API
-    distance, summarize,
+    distance, # summarize,
     # primitives
     AbsDiff, RelDiff,
     # weights
@@ -31,7 +31,7 @@ Base.broadcastable(metric::AbstractMetric) = Ref(metric)
 
 Calculate the distance (a real number) between `data` and `model` using `metric`.
 
-Importantly, `distance` is **not a metric in the mathematical sense**. Most importantly,
+Importantly, `distance` is **not a metric in the mathematical sense**, for example,
 it can be asymmetric.
 
 Distances are always finite. In practice, this means that they throw a `DomainError` for
@@ -109,7 +109,7 @@ struct Weighted{M,T <: Real} <: AbstractMetric
     1.0
     ```
 
-    Note that you can also create weigthed metric using `weight * metric`.
+    Note that you can also create weighted metric using `weight * metric`.
     """
     function Weighted(parent::M, weight::T) where {M, T <: Real}
         @argcheck weight > 0
@@ -152,6 +152,22 @@ struct NamedPNorm{M <: NamedTuple,T<:Real}
 
     Apply the metrics in the given `NamedTuple` to `data` and `moment`, which should
     support `getproperty`.
+
+    $(@doc DEFAULT_P)
+
+    Note that extra properties in the arguments are ignored.
+    ```jldoctest
+    julia> metric = NamedPNorm((a = RelDiff(), b = AbsDiff()))
+    NamedPNorm((a = RelDiff(), b = AbsDiff()))
+
+    julia> distance(metric, (a = 1, b = 2), (a = 3, b = 4)) # ≈ √8
+    2.8284271247461903
+
+    julia> distance(metric,
+           (a = 1, b = 2, c = "a fish"),     # c ignored, not in metric
+           (a = 3, b = 4, d = "an octopus")) # d ignored, not in metric
+    2.8284271247461903
+    ```
     """
     function NamedPNorm(named_metrics::M, p::T = DEFAULT_P) where {T<:Real,M<:NamedTuple}
         @argcheck p ≥ 1
@@ -159,7 +175,19 @@ struct NamedPNorm{M <: NamedTuple,T<:Real}
     end
 end
 
-NamedPNorm(p = 2; kw...) = NamedPNorm(kw, p)
+"""
+$(SIGNATURES)
+
+Alternative convenience constructor using keyword arguments.
+
+```jldoctest
+julia> NamedPNorm(a = RelDiff(), b = AbsDiff())
+NamedPNorm((a = RelDiff(), b = AbsDiff()))
+```
+
+$(@doc DEFAULT_P)
+"""
+NamedPNorm(p = 2; kw...) = NamedPNorm(NamedTuple(kw), p)
 
 function Base.show(io::IO, metric::NamedPNorm)
     p = getfield(metric, :p)
@@ -198,7 +226,7 @@ end
 struct PNorm{M,T}
     elementwise_metric::M
     p::T
-    """
+    @doc """
     $(SIGNATURES)
 
     Apply the elementwise metric, then calculate a p-norm.
