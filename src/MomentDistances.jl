@@ -1,3 +1,6 @@
+"""
+$(README)
+"""
 module MomentDistances
 
 export
@@ -11,7 +14,7 @@ export
     PNorm, NamedPNorm
 
 using ArgCheck: @argcheck
-using DocStringExtensions: FUNCTIONNAME, SIGNATURES, TYPEDEF
+using DocStringExtensions: FUNCTIONNAME, SIGNATURES, TYPEDEF, README
 using Base.Multimedia: MIME, @MIME_str
 
 ####
