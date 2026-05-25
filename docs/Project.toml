@@ -1,0 +1,9 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+MomentDistances = "6d79b445-47d2-435a-955a-fbe0d268cddb"
+
+[sources]
+MomentDistances = {path = ".."}
+
+[compat]
+Documenter = "1"
